@@ -1,0 +1,6 @@
+{
+  "name": "Quantitative & ML Systems Portfolio",
+  "description": "High-dimensional statistical learning, telemetry systems, and machine intelligence architectures portfolio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
