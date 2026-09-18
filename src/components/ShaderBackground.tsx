@@ -17,7 +17,8 @@ export const ShaderBackground: React.FC = () => {
 
     let animationFrameId: number;
     let isDestroyed = false;
-    let isVisible = true;
+    let isIntersecting = true;
+    let isRunning = false;
 
     const vsSource = `
       attribute vec2 a_position;
@@ -144,7 +145,7 @@ export const ShaderBackground: React.FC = () => {
     let targetMouseY = mouseY;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!canvas || !isVisible) return;
+      if (!canvas || !isIntersecting || document.hidden) return;
       const rect = canvas.getBoundingClientRect();
       if (rect.width && rect.height) {
         const nx = (e.clientX - rect.left) / rect.width;
@@ -158,7 +159,8 @@ export const ShaderBackground: React.FC = () => {
 
     const resize = () => {
       if (!canvas || !container) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+      const isMobile = window.innerWidth < 768;
+      const dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.25);
       const width = Math.floor((container.clientWidth || window.innerWidth) * dpr);
       const height = Math.floor((container.clientHeight || window.innerHeight) * dpr);
       if (width > 0 && height > 0 && (canvas.width !== width || canvas.height !== height)) {
@@ -173,10 +175,8 @@ export const ShaderBackground: React.FC = () => {
     resizeObserver.observe(container);
     window.addEventListener('resize', resize, { passive: true });
 
-    let isRunning = false;
-
     const render = (time: number) => {
-      if (isDestroyed || !isVisible) {
+      if (isDestroyed || !isIntersecting || document.hidden) {
         isRunning = false;
         return;
       }
@@ -193,7 +193,7 @@ export const ShaderBackground: React.FC = () => {
     };
 
     const startRendering = () => {
-      if (!isRunning && isVisible && !isDestroyed) {
+      if (!isRunning && isIntersecting && !isDestroyed && !document.hidden) {
         isRunning = true;
         animationFrameId = requestAnimationFrame(render);
       }
@@ -204,21 +204,35 @@ export const ShaderBackground: React.FC = () => {
     // Pause rendering loop completely when Hero is out of view
     const observer = new IntersectionObserver(
       ([entry]) => {
-        isVisible = entry.isIntersecting;
-        if (isVisible) {
+        isIntersecting = entry.isIntersecting;
+        if (isIntersecting) {
           startRendering();
+        } else {
+          isRunning = false;
+          if (animationFrameId) cancelAnimationFrame(animationFrameId);
         }
       },
       { threshold: 0.02 }
     );
     observer.observe(container);
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isRunning = false;
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      } else if (isIntersecting) {
+        startRendering();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       isDestroyed = true;
-      isVisible = false;
+      isIntersecting = false;
       isRunning = false;
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
       observer.disconnect();

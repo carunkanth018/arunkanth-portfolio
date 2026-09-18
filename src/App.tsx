@@ -13,7 +13,6 @@ import { CustomCursor } from './components/CustomCursor';
 import { Magnetic } from './components/Magnetic';
 import { PhoneCall } from 'lucide-react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-
 import { scrollToSection } from './utils/scroll';
 
 function PortfolioApp() {
@@ -35,11 +34,13 @@ function PortfolioApp() {
   }, []);
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${
-      isDark 
-        ? 'bg-[#040814] text-[#f5f5f5] selection:bg-white selection:text-black' 
-        : 'bg-[#f8fafc] text-slate-900 selection:bg-cyan-500 selection:text-white'
-    }`}>
+    <div
+      className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${
+        isDark
+          ? 'bg-[#040814] text-[#f5f5f5] selection:bg-white selection:text-black'
+          : 'bg-[#f8fafc] text-slate-900 selection:bg-cyan-500 selection:text-white'
+      }`}
+    >
       {/* Custom Animated Cursor */}
       <CustomCursor />
 

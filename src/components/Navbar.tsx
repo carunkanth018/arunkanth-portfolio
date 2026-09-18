@@ -55,40 +55,41 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenResume }) => {
   useEffect(() => {
     let ticking = false;
 
+    // Cache elements to avoid repeated DOM queries
+    const sectionElements = NAV_LINKS.map((link) => ({
+      id: link.id,
+      el: document.getElementById(link.id),
+    })).filter((item) => item.el !== null) as { id: string; el: HTMLElement }[];
+
     const determineActiveSection = () => {
       const scrollY = window.scrollY;
       const viewportHeight = window.innerHeight;
       const scrollHeight = document.documentElement.scrollHeight;
 
-      // 1. Top of the page
-      if (scrollY < 100) {
+      if (scrollY < 80) {
         return 'home';
       }
 
-      // 2. Bottom of the page (within 60px of document end)
       if (scrollY + viewportHeight >= scrollHeight - 60) {
         return 'contact';
       }
 
-      // 3. Focal zone calculation: which section has the greatest overlap in the upper viewport (80px to 65% height)
       const focalTop = 80;
       const focalBottom = Math.max(focalTop + 100, viewportHeight * 0.65);
 
       let bestId = 'home';
       let maxVisibleArea = -1;
 
-      for (const link of NAV_LINKS) {
-        const el = document.getElementById(link.id);
-        if (!el) continue;
-
-        const rect = el.getBoundingClientRect();
+      for (let i = 0; i < sectionElements.length; i++) {
+        const item = sectionElements[i];
+        const rect = item.el.getBoundingClientRect();
         const visibleTop = Math.max(rect.top, focalTop);
         const visibleBottom = Math.min(rect.bottom, focalBottom);
         const visibleHeight = Math.max(0, visibleBottom - visibleTop);
 
         if (visibleHeight > maxVisibleArea) {
           maxVisibleArea = visibleHeight;
-          bestId = link.id;
+          bestId = item.id;
         }
       }
 
@@ -102,7 +103,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenResume }) => {
         setIsScrolled(newScrolled);
       }
 
-      // If smooth scrolling from a recent click, skip overriding
       if (isClickScrollingRef.current) {
         return;
       }
@@ -123,25 +123,25 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenResume }) => {
       }
     };
 
-    // Initial check on mount - defaults to top / home
     updateActiveSection();
 
-    // Use IntersectionObserver as an additional event driver for smooth section transitions
-    const observerCallback: IntersectionObserverCallback = () => {
+    const observerCallback: IntersectionObserverCallback = (entries) => {
       if (!isClickScrollingRef.current) {
-        updateActiveSection();
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) {
+          updateActiveSection();
+        }
       }
     };
 
     const observer = new IntersectionObserver(observerCallback, {
       root: null,
       rootMargin: '-80px 0px -40% 0px',
-      threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+      threshold: [0, 0.25, 0.5, 0.75],
     });
 
-    NAV_LINKS.forEach((link) => {
-      const el = document.getElementById(link.id);
-      if (el) observer.observe(el);
+    sectionElements.forEach((item) => {
+      observer.observe(item.el);
     });
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -200,7 +200,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenResume }) => {
           >
             <img 
               src="/assets/ak-logo.png" 
-              alt="AK" 
+              alt="AK"
+              width="100"
+              height="28"
+              decoding="async"
               className="h-6 sm:h-6.5 md:h-7 w-auto object-contain transition-all duration-200 group-hover:opacity-95 drop-shadow-[0_0_6px_rgba(0,229,255,0.3)] group-hover:drop-shadow-[0_0_10px_rgba(0,229,255,0.55)]"
             />
           </a>
@@ -313,4 +316,3 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenResume }) => {
     </motion.header>
   );
 };
-

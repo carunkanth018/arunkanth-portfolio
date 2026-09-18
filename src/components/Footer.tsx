@@ -9,13 +9,28 @@ const TelemetryClock: React.FC = React.memo(() => {
   const [utcTime, setUtcTime] = useState('');
 
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
     const updateTime = () => {
+      if (document.hidden) return;
       const now = new Date();
       setUtcTime(now.toUTCString().replace('GMT', 'UTC'));
     };
+
     updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+    interval = setInterval(updateTime, 1000);
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        updateTime();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   return <span className="text-gray-500">{utcTime}</span>;

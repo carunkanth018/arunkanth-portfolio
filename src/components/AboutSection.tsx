@@ -61,6 +61,10 @@ export const AboutSection: React.FC = () => {
                 <img
                   src="/assets/profile.jpg"
                   alt="Chowdivada Arun Kanth"
+                  width="420"
+                  height="440"
+                  loading="lazy"
+                  decoding="async"
                   data-cursor="image"
                   className="w-full h-[380px] sm:h-[440px] object-cover object-top transition-transform duration-700 group-hover:scale-105"
                 />

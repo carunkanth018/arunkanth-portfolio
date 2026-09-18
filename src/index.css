@@ -249,22 +249,24 @@ section {
 @keyframes ambient-glow-drift {
   0%, 100% {
     opacity: 0.12;
-    transform: scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   50% {
     opacity: 0.18;
-    transform: scale(1.04);
+    transform: translate3d(0, -6px, 0) scale(1.03);
   }
 }
 
 .animate-glow-drift {
   animation: ambient-glow-drift 14s ease-in-out infinite alternate;
-  will-change: opacity, transform;
+  will-change: transform;
+  contain: paint;
 }
 
 .animate-glow-drift-reverse {
   animation: ambient-glow-drift 18s ease-in-out infinite alternate-reverse;
-  will-change: opacity, transform;
+  will-change: transform;
+  contain: paint;
 }
 
 /* Accessibility: Respect Reduced Motion Preferences */
@@ -283,11 +285,13 @@ section {
 #skills,
 #projects,
 #experience,
+#journey,
 #visualizations,
 #contact,
 section {
   scroll-margin-top: 5.5rem;
 }
+
 
 /* Smooth, targeted theme transitions */
 html, body {

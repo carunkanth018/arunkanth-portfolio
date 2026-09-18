@@ -141,7 +141,7 @@ export const Hero: React.FC = () => {
 
     let rafId: number | null = null;
     const handleMouseMove = (e: MouseEvent) => {
-      if (rafId) return;
+      if (rafId || document.hidden) return;
       rafId = requestAnimationFrame(() => {
         if (heroRef.current) {
           const rect = heroRef.current.getBoundingClientRect();
@@ -154,10 +154,20 @@ export const Hero: React.FC = () => {
       });
     };
 
+    const handleVisibility = () => {
+      if (document.hidden && rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
     const section = heroRef.current;
     section?.addEventListener('mousemove', handleMouseMove, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       section?.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('visibilitychange', handleVisibility);
       if (rafId) cancelAnimationFrame(rafId);
     };
   }, []);

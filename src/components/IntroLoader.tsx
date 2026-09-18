@@ -22,6 +22,7 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number | null>(null);
   const isDismissingRef = useRef(false);
+  const hasCompletedRef = useRef(false);
 
   // Check prefers-reduced-motion
   const prefersReducedMotion =
@@ -33,41 +34,36 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
     document.body.style.overflow = 'hidden';
     window.scrollTo(0, 0);
 
+    const finishIntro = () => {
+      if (hasCompletedRef.current) return;
+      hasCompletedRef.current = true;
+      document.body.style.overflow = '';
+      onComplete();
+    };
+
     if (prefersReducedMotion) {
       const quickTimer = setTimeout(() => {
         isDismissingRef.current = true;
         setIsDismissing(true);
-        setTimeout(() => {
-          document.body.style.overflow = '';
-          onComplete();
-        }, 200);
-      }, 500);
+        setTimeout(finishIntro, 150);
+      }, 400);
       return () => {
         clearTimeout(quickTimer);
         document.body.style.overflow = '';
       };
     }
 
-    // Sequence timeline (~2.4s total, punchy & ultra-smooth):
-    // Phase 1: 0.0s (Ambient awakening)
-    // Phase 2: 0.3s (Network constellation start)
-    // Phase 3: 0.75s (Identity reveal: ARUN KANTH & AI • DATA • WEB)
-    // Phase 4: 1.25s (System telemetry sequence)
-    // Phase 5: 2.05s (Cinematic fade-out & canvas stop)
-    // Complete: 2.45s (Unmount)
-    const t2 = setTimeout(() => setPhase(2), 300);
-    const t3 = setTimeout(() => setPhase(3), 750);
-    const t4 = setTimeout(() => setPhase(4), 1250);
+    // High performance sequential timeline:
+    const t2 = setTimeout(() => setPhase(2), 250);
+    const t3 = setTimeout(() => setPhase(3), 650);
+    const t4 = setTimeout(() => setPhase(4), 1100);
     const t5 = setTimeout(() => {
       setPhase(5);
       isDismissingRef.current = true;
       setIsDismissing(true);
-    }, 2050);
+    }, 1850);
 
-    const tEnd = setTimeout(() => {
-      document.body.style.overflow = '';
-      onComplete();
-    }, 2450);
+    const tEnd = setTimeout(finishIntro, 2250);
 
     return () => {
       clearTimeout(t2);
@@ -79,7 +75,7 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
     };
   }, [onComplete, prefersReducedMotion]);
 
-  // Digital Constellation Particle Network Simulation
+  // Digital Constellation Particle Network Simulation (Ultra-lightweight)
   useEffect(() => {
     if (prefersReducedMotion) return;
 
@@ -99,7 +95,7 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
     window.addEventListener('resize', handleResize, { passive: true });
 
     const isMobile = window.innerWidth < 768;
-    const particleCount = isMobile ? 14 : 26;
+    const particleCount = isMobile ? 10 : 18;
     const colors = ['#00e5ff', '#3b82f6', '#805ad5', '#c084fc'];
     const particles: Particle[] = [];
 
@@ -107,16 +103,16 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.6,
-        vy: (Math.random() - 0.5) * 0.6,
-        radius: Math.random() * 1.5 + 0.8,
-        alpha: Math.random() * 0.5 + 0.25,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        radius: Math.random() * 1.4 + 0.7,
+        alpha: Math.random() * 0.45 + 0.2,
+        color: colors[i % colors.length],
       });
     }
 
     const render = () => {
-      if (isDismissingRef.current) {
+      if (isDismissingRef.current || document.hidden) {
         if (animFrameRef.current) {
           cancelAnimationFrame(animFrameRef.current);
           animFrameRef.current = null;
@@ -127,27 +123,30 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
       ctx.clearRect(0, 0, width, height);
 
       // Draw faint interconnecting data lines
-      const maxDistance = isMobile ? 80 : 115;
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
+      const maxDistance = isMobile ? 70 : 105;
+      const len = particles.length;
+      for (let i = 0; i < len; i++) {
+        const p1 = particles[i];
+        for (let j = i + 1; j < len; j++) {
+          const p2 = particles[j];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist < maxDistance) {
-            const alpha = (1 - dist / maxDistance) * 0.16;
+            const alpha = (1 - dist / maxDistance) * 0.15;
             ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
             ctx.strokeStyle = `rgba(0, 229, 255, ${alpha})`;
-            ctx.lineWidth = 0.7;
+            ctx.lineWidth = 0.6;
             ctx.stroke();
           }
         }
       }
 
-      // Render glowing nodes with high-performance alpha fill
-      for (let i = 0; i < particles.length; i++) {
+      // Render glowing nodes
+      for (let i = 0; i < len; i++) {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
@@ -170,8 +169,21 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
 
     animFrameRef.current = requestAnimationFrame(render);
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+      } else if (!isDismissingRef.current && !animFrameRef.current) {
+        animFrameRef.current = requestAnimationFrame(render);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = null;
@@ -180,9 +192,9 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
   }, [prefersReducedMotion]);
 
   const telemetryItems = [
-    { label: 'AI SYSTEMS', delay: 1.35 },
-    { label: 'DATA SYSTEMS', delay: 1.55 },
-    { label: 'WEB EXPERIENCE', delay: 1.75 },
+    { label: 'AI SYSTEMS', delay: 1.15 },
+    { label: 'DATA SYSTEMS', delay: 1.35 },
+    { label: 'WEB EXPERIENCE', delay: 1.55 },
   ];
 
   return (
@@ -193,8 +205,8 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
           initial={{ opacity: 1 }}
           exit={{
             opacity: 0,
-            scale: 1.02,
-            transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+            scale: 1.01,
+            transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
           }}
           className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#02050f] text-white overflow-hidden select-none pointer-events-auto"
         >
@@ -205,7 +217,7 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
           />
 
           {/* Atmospheric Ambient Radiant Glows */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-radial from-cyan-500/15 via-purple-600/10 to-transparent rounded-full blur-3xl pointer-events-none will-change-transform" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-radial from-cyan-500/15 via-purple-600/10 to-transparent rounded-full blur-3xl pointer-events-none will-change-transform" />
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#00d2ff05_1px,transparent_1px),linear-gradient(to_bottom,#00d2ff05_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
 
           {/* Central System Core Container */}
@@ -219,7 +231,7 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
                 rotate: 45,
               }}
               transition={{
-                duration: 0.9,
+                duration: 0.8,
                 ease: [0.16, 1, 0.3, 1],
               }}
               className="relative w-12 h-12 flex items-center justify-center will-change-transform"
@@ -234,24 +246,24 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
             {/* Identity Typography (Phase 3+) */}
             <div className="flex flex-col items-center gap-2">
               <motion.h1
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{
                   opacity: phase >= 3 ? 1 : 0,
-                  y: phase >= 3 ? 0 : 15,
+                  y: phase >= 3 ? 0 : 12,
                 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                 className="font-sans font-black text-3xl sm:text-4xl md:text-5xl tracking-[0.22em] text-white uppercase drop-shadow-[0_0_25px_rgba(0,229,255,0.6)]"
               >
                 ARUN KANTH
               </motion.h1>
 
               <motion.div
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{
                   opacity: phase >= 3 ? 1 : 0,
-                  y: phase >= 3 ? 0 : 8,
+                  y: phase >= 3 ? 0 : 6,
                 }}
-                transition={{ duration: 0.45, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.4, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
                 className="flex items-center gap-3"
               >
                 <div className="w-8 h-[1px] bg-gradient-to-r from-transparent to-cyan-400" />
@@ -264,12 +276,12 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
 
             {/* Initialization Telemetry (Phase 4+) */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{
                 opacity: phase >= 4 ? 1 : 0,
-                y: phase >= 4 ? 0 : 10,
+                y: phase >= 4 ? 0 : 8,
               }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
               className="w-full max-w-xs flex flex-col gap-2 pt-1"
             >
               {/* Telemetry Header */}
@@ -286,14 +298,14 @@ export const IntroLoader: React.FC<IntroLoaderProps> = ({ onComplete }) => {
                 {telemetryItems.map((item, idx) => (
                   <motion.div
                     key={item.label}
-                    initial={{ opacity: 0, x: -8 }}
+                    initial={{ opacity: 0, x: -6 }}
                     animate={{
                       opacity: phase >= 4 ? 1 : 0,
-                      x: phase >= 4 ? 0 : -8,
+                      x: phase >= 4 ? 0 : -6,
                     }}
                     transition={{
-                      duration: 0.35,
-                      delay: 0.08 + idx * 0.12,
+                      duration: 0.3,
+                      delay: 0.05 + idx * 0.1,
                       ease: 'easeOut',
                     }}
                     className="flex items-center justify-between text-xs font-mono text-gray-300 py-0.5"

@@ -100,14 +100,23 @@ export const Magnetic: React.FC<MagneticProps> = ({
       }
     };
 
+    const handleVisibility = () => {
+      if (document.hidden && rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+
     el.addEventListener('mousemove', handleMouseMove, { passive: true });
     el.addEventListener('mouseenter', handleMouseEnter);
     el.addEventListener('mouseleave', handleMouseLeave);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       el.removeEventListener('mousemove', handleMouseMove);
       el.removeEventListener('mouseenter', handleMouseEnter);
       el.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('visibilitychange', handleVisibility);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
