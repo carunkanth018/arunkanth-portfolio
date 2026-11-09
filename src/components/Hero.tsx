@@ -98,6 +98,7 @@ const HeroTypewriter: React.FC = React.memo(() => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
+    if (document.hidden) return;
     const fullText = WORDS[currentWordIndex];
     let timer: NodeJS.Timeout;
 
@@ -140,13 +141,33 @@ export const Hero: React.FC = () => {
     if (isTouch) return;
 
     let rafId: number | null = null;
+    let heroRect: DOMRect | null = null;
+
+    const updateRect = () => {
+      if (heroRef.current) {
+        heroRect = heroRef.current.getBoundingClientRect();
+      }
+    };
+
+    updateRect();
+    window.addEventListener('resize', updateRect, { passive: true });
+    window.addEventListener('scroll', updateRect, { passive: true });
+
     const handleMouseMove = (e: MouseEvent) => {
       if (rafId || document.hidden) return;
+      if (!heroRect || heroRect.width === 0 || heroRect.height === 0) {
+        updateRect();
+      }
+      if (!heroRect) return;
+
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+      const rect = heroRect;
+
       rafId = requestAnimationFrame(() => {
-        if (heroRef.current) {
-          const rect = heroRef.current.getBoundingClientRect();
-          const normX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-          const normY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+        if (heroRef.current && rect) {
+          const normX = ((clientX - rect.left) / rect.width - 0.5) * 2;
+          const normY = ((clientY - rect.top) / rect.height - 0.5) * 2;
           heroRef.current.style.setProperty('--hero-mx', `${(normX * 12).toFixed(1)}px`);
           heroRef.current.style.setProperty('--hero-my', `${(normY * 12).toFixed(1)}px`);
         }
@@ -158,6 +179,8 @@ export const Hero: React.FC = () => {
       if (document.hidden && rafId) {
         cancelAnimationFrame(rafId);
         rafId = null;
+      } else if (!document.hidden) {
+        updateRect();
       }
     };
 
@@ -168,6 +191,8 @@ export const Hero: React.FC = () => {
     return () => {
       section?.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect);
       if (rafId) cancelAnimationFrame(rafId);
     };
   }, []);

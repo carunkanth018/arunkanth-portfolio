@@ -40,6 +40,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({
     let targetSpotX = 50;
     let targetSpotY = 50;
     let isHovered = false;
+    let cardRect: DOMRect | null = null;
 
     const updateTilt = () => {
       if (!isHovered) {
@@ -67,7 +68,10 @@ export const TiltCard: React.FC<TiltCardProps> = ({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
+      if (!cardRect) {
+        cardRect = el.getBoundingClientRect();
+      }
+      const rect = cardRect;
       const clientX = e.clientX;
       const clientY = e.clientY;
 
@@ -102,6 +106,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({
 
     const handleMouseEnter = () => {
       isHovered = true;
+      cardRect = el.getBoundingClientRect();
       if (spotlightRef.current) {
         spotlightRef.current.style.opacity = '1';
       }
@@ -112,6 +117,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({
 
     const handleMouseLeave = () => {
       isHovered = false;
+      cardRect = null;
       targetRotX = 0;
       targetRotY = 0;
       el.style.removeProperty('--card-mx');

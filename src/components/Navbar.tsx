@@ -61,75 +61,46 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenResume }) => {
       el: document.getElementById(link.id),
     })).filter((item) => item.el !== null) as { id: string; el: HTMLElement }[];
 
-    const determineActiveSection = () => {
-      const scrollY = window.scrollY;
-      const viewportHeight = window.innerHeight;
-      const scrollHeight = document.documentElement.scrollHeight;
-
-      if (scrollY < 80) {
-        return 'home';
-      }
-
-      if (scrollY + viewportHeight >= scrollHeight - 60) {
-        return 'contact';
-      }
-
-      const focalTop = 80;
-      const focalBottom = Math.max(focalTop + 100, viewportHeight * 0.65);
-
-      let bestId = 'home';
-      let maxVisibleArea = -1;
-
-      for (let i = 0; i < sectionElements.length; i++) {
-        const item = sectionElements[i];
-        const rect = item.el.getBoundingClientRect();
-        const visibleTop = Math.max(rect.top, focalTop);
-        const visibleBottom = Math.min(rect.bottom, focalBottom);
-        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-
-        if (visibleHeight > maxVisibleArea) {
-          maxVisibleArea = visibleHeight;
-          bestId = item.id;
-        }
-      }
-
-      return bestId;
-    };
-
-    const updateActiveSection = () => {
-      const scrollY = window.scrollY;
-      const newScrolled = scrollY > 20;
-      if (newScrolled !== isScrolledRef.current) {
-        setIsScrolled(newScrolled);
-      }
-
-      if (isClickScrollingRef.current) {
-        return;
-      }
-
-      const activeId = determineActiveSection();
-      if (activeId && activeId !== activeSectionRef.current) {
-        setActiveSection(activeId);
-      }
-    };
-
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          updateActiveSection();
+          const scrollY = window.scrollY;
+          const newScrolled = scrollY > 20;
+          if (newScrolled !== isScrolledRef.current) {
+            setIsScrolled(newScrolled);
+          }
+
+          if (!isClickScrollingRef.current) {
+            if (scrollY < 80) {
+              if (activeSectionRef.current !== 'home') {
+                setActiveSection('home');
+              }
+            } else if (scrollY + window.innerHeight >= document.documentElement.scrollHeight - 60) {
+              if (activeSectionRef.current !== 'contact') {
+                setActiveSection('contact');
+              }
+            }
+          }
           ticking = false;
         });
         ticking = true;
       }
     };
 
-    updateActiveSection();
+    handleScroll();
 
     const observerCallback: IntersectionObserverCallback = (entries) => {
-      if (!isClickScrollingRef.current) {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) {
-          updateActiveSection();
+      if (isClickScrollingRef.current) return;
+      const scrollY = window.scrollY;
+      if (scrollY < 80) return;
+
+      const visibleEntries = entries.filter((e) => e.isIntersecting);
+      if (visibleEntries.length > 0) {
+        // Pick the entry with the highest intersection ratio
+        visibleEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const bestTarget = visibleEntries[0].target.id;
+        if (bestTarget && bestTarget !== activeSectionRef.current) {
+          setActiveSection(bestTarget);
         }
       }
     };
@@ -137,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenResume }) => {
     const observer = new IntersectionObserver(observerCallback, {
       root: null,
       rootMargin: '-80px 0px -40% 0px',
-      threshold: [0, 0.25, 0.5, 0.75],
+      threshold: [0.1, 0.25, 0.5, 0.75],
     });
 
     sectionElements.forEach((item) => {
@@ -204,6 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenResume }) => {
               width="100"
               height="28"
               decoding="async"
+              fetchPriority="high"
               className="h-6 sm:h-6.5 md:h-7 w-auto object-contain transition-all duration-200 group-hover:opacity-95 drop-shadow-[0_0_6px_rgba(0,229,255,0.3)] group-hover:drop-shadow-[0_0_10px_rgba(0,229,255,0.55)]"
             />
           </a>

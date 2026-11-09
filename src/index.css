@@ -292,6 +292,17 @@ section {
   scroll-margin-top: 5.5rem;
 }
 
+/* Offscreen rendering optimization - avoids layout/paint overhead for offscreen sections */
+#about,
+#skills,
+#projects,
+#journey,
+#experience,
+#contact {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 650px;
+}
+
 
 /* Smooth, targeted theme transitions */
 html, body {

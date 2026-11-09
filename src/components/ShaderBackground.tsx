@@ -9,16 +9,26 @@ export const ShaderBackground: React.FC = () => {
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const gl =
-      canvas.getContext('webgl', { powerPreference: 'low-power', antialias: false }) ||
-      (canvas.getContext('experimental-webgl') as WebGLRenderingContext | null);
+    let gl: WebGLRenderingContext | null = null;
+    let program: WebGLProgram | null = null;
+    let buffer: WebGLBuffer | null = null;
+    let vs: WebGLShader | null = null;
+    let fs: WebGLShader | null = null;
+    let uTime: WebGLUniformLocation | null = null;
+    let uRes: WebGLUniformLocation | null = null;
+    let uMouse: WebGLUniformLocation | null = null;
 
-    if (!gl) return;
-
-    let animationFrameId: number;
+    let animationFrameId: number | null = null;
     let isDestroyed = false;
     let isIntersecting = true;
     let isRunning = false;
+    let lastTime = 0;
+    let accumulatedTime = 0;
+
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let targetMouseX = mouseX;
+    let targetMouseY = mouseY;
 
     const vsSource = `
       attribute vec2 a_position;
@@ -30,7 +40,11 @@ export const ShaderBackground: React.FC = () => {
     `;
 
     const fsSource = `
+      #ifdef GL_FRAGMENT_PRECISION_HIGH
+      precision highp float;
+      #else
       precision mediump float;
+      #endif
       uniform float u_time;
       uniform vec2 u_resolution;
       uniform vec2 u_mouse;
@@ -95,54 +109,74 @@ export const ShaderBackground: React.FC = () => {
       }
     `;
 
-    function compileShader(type: number, src: string) {
-      const shader = gl!.createShader(type);
+    function compileShader(ctx: WebGLRenderingContext, type: number, src: string) {
+      const shader = ctx.createShader(type);
       if (!shader) return null;
-      gl!.shaderSource(shader, src);
-      gl!.compileShader(shader);
-      if (!gl!.getShaderParameter(shader, gl!.COMPILE_STATUS)) {
-        gl!.deleteShader(shader);
+      ctx.shaderSource(shader, src);
+      ctx.compileShader(shader);
+      if (!ctx.getShaderParameter(shader, ctx.COMPILE_STATUS)) {
+        ctx.deleteShader(shader);
         return null;
       }
       return shader;
     }
 
-    const vs = compileShader(gl.VERTEX_SHADER, vsSource);
-    const fs = compileShader(gl.FRAGMENT_SHADER, fsSource);
-    if (!vs || !fs) return;
+    function initGL(): boolean {
+      if (!canvas) return false;
+      gl =
+        canvas.getContext('webgl', { powerPreference: 'low-power', antialias: false }) ||
+        (canvas.getContext('experimental-webgl') as WebGLRenderingContext | null);
 
-    const program = gl.createProgram();
-    if (!program) return;
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
+      if (!gl) return false;
 
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      return;
+      vs = compileShader(gl, gl.VERTEX_SHADER, vsSource);
+      fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSource);
+      if (!vs || !fs) return false;
+
+      program = gl.createProgram();
+      if (!program) return false;
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        return false;
+      }
+
+      gl.useProgram(program);
+
+      buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+        gl.STATIC_DRAW
+      );
+
+      const pos = gl.getAttribLocation(program, 'a_position');
+      gl.enableVertexAttribArray(pos);
+      gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+
+      uTime = gl.getUniformLocation(program, 'u_time');
+      uRes = gl.getUniformLocation(program, 'u_resolution');
+      uMouse = gl.getUniformLocation(program, 'u_mouse');
+
+      resize();
+      return true;
     }
 
-    gl.useProgram(program);
-
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-      gl.STATIC_DRAW
-    );
-
-    const pos = gl.getAttribLocation(program, 'a_position');
-    gl.enableVertexAttribArray(pos);
-    gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
-
-    const uTime = gl.getUniformLocation(program, 'u_time');
-    const uRes = gl.getUniformLocation(program, 'u_resolution');
-    const uMouse = gl.getUniformLocation(program, 'u_mouse');
-
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 2;
-    let targetMouseX = mouseX;
-    let targetMouseY = mouseY;
+    const resize = () => {
+      if (!canvas || !container || !gl) return;
+      const isMobile = window.innerWidth < 768;
+      const dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.25);
+      const width = Math.floor((container.clientWidth || window.innerWidth) * dpr);
+      const height = Math.floor((container.clientHeight || window.innerHeight) * dpr);
+      if (width > 0 && height > 0 && (canvas.width !== width || canvas.height !== height)) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    };
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!canvas || !isIntersecting || document.hidden) return;
@@ -155,36 +189,26 @@ export const ShaderBackground: React.FC = () => {
       }
     };
 
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-
-    const resize = () => {
-      if (!canvas || !container) return;
-      const isMobile = window.innerWidth < 768;
-      const dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.25);
-      const width = Math.floor((container.clientWidth || window.innerWidth) * dpr);
-      const height = Math.floor((container.clientHeight || window.innerHeight) * dpr);
-      if (width > 0 && height > 0 && (canvas.width !== width || canvas.height !== height)) {
-        canvas.width = width;
-        canvas.height = height;
-        gl.viewport(0, 0, width, height);
-      }
-    };
-
-    resize();
-    const resizeObserver = new ResizeObserver(() => resize());
-    resizeObserver.observe(container);
-    window.addEventListener('resize', resize, { passive: true });
-
     const render = (time: number) => {
-      if (isDestroyed || !isIntersecting || document.hidden) {
+      if (isDestroyed || !isIntersecting || document.hidden || !gl) {
         isRunning = false;
+        lastTime = 0;
         return;
       }
+
+      if (lastTime === 0) {
+        lastTime = time;
+      }
+      // Clamp delta time to 0.1s max to prevent huge jumps after sleep or background throttling
+      const delta = Math.min((time - lastTime) * 0.001, 0.1);
+      lastTime = time;
+      accumulatedTime = (accumulatedTime + delta) % 3600.0;
+
       // Smooth mouse lerp
       mouseX += (targetMouseX - mouseX) * 0.1;
       mouseY += (targetMouseY - mouseY) * 0.1;
 
-      if (uTime) gl.uniform1f(uTime, time * 0.001);
+      if (uTime) gl.uniform1f(uTime, accumulatedTime);
       if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
       if (uMouse) gl.uniform2f(uMouse, mouseX, mouseY);
 
@@ -193,13 +217,40 @@ export const ShaderBackground: React.FC = () => {
     };
 
     const startRendering = () => {
-      if (!isRunning && isIntersecting && !isDestroyed && !document.hidden) {
+      if (!isRunning && isIntersecting && !isDestroyed && !document.hidden && gl) {
         isRunning = true;
+        lastTime = 0;
         animationFrameId = requestAnimationFrame(render);
       }
     };
 
-    startRendering();
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+      isRunning = false;
+      lastTime = 0;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+    };
+
+    const handleContextRestored = () => {
+      if (initGL()) {
+        startRendering();
+      }
+    };
+
+    canvas.addEventListener('webglcontextlost', handleContextLost, false);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
+
+    if (initGL()) {
+      startRendering();
+    }
+
+    const resizeObserver = new ResizeObserver(() => resize());
+    resizeObserver.observe(container);
+    window.addEventListener('resize', resize, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
 
     // Pause rendering loop completely when Hero is out of view
     const observer = new IntersectionObserver(
@@ -209,7 +260,11 @@ export const ShaderBackground: React.FC = () => {
           startRendering();
         } else {
           isRunning = false;
-          if (animationFrameId) cancelAnimationFrame(animationFrameId);
+          lastTime = 0;
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+          }
         }
       },
       { threshold: 0.02 }
@@ -219,8 +274,13 @@ export const ShaderBackground: React.FC = () => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         isRunning = false;
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        lastTime = 0;
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = null;
+        }
       } else if (isIntersecting) {
+        lastTime = 0;
         startRendering();
       }
     };
@@ -230,19 +290,21 @@ export const ShaderBackground: React.FC = () => {
       isDestroyed = true;
       isIntersecting = false;
       isRunning = false;
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
       observer.disconnect();
 
       // Clean up WebGL resources
       if (gl) {
-        gl.deleteBuffer(buffer);
-        gl.deleteProgram(program);
-        gl.deleteShader(vs);
-        gl.deleteShader(fs);
+        if (buffer) gl.deleteBuffer(buffer);
+        if (program) gl.deleteProgram(program);
+        if (vs) gl.deleteShader(vs);
+        if (fs) gl.deleteShader(fs);
       }
     };
   }, []);

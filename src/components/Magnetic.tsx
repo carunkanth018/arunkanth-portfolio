@@ -34,6 +34,7 @@ export const Magnetic: React.FC<MagneticProps> = ({
     let currentX = 0;
     let currentY = 0;
     let isInside = false;
+    let elementRect: DOMRect | null = null;
 
     const updatePosition = () => {
       if (!isInside) {
@@ -57,7 +58,10 @@ export const Magnetic: React.FC<MagneticProps> = ({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
+      if (!elementRect) {
+        elementRect = el.getBoundingClientRect();
+      }
+      const rect = elementRect;
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
 
@@ -84,6 +88,7 @@ export const Magnetic: React.FC<MagneticProps> = ({
 
     const handleMouseEnter = () => {
       isInside = true;
+      elementRect = el.getBoundingClientRect();
       if (!rafRef.current) {
         rafRef.current = requestAnimationFrame(updatePosition);
       }
@@ -91,6 +96,7 @@ export const Magnetic: React.FC<MagneticProps> = ({
 
     const handleMouseLeave = () => {
       isInside = false;
+      elementRect = null;
       targetX = 0;
       targetY = 0;
       el.style.removeProperty('--mouse-x');
