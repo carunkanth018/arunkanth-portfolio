@@ -77,8 +77,14 @@ export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => 
               </div>
               <div className="flex flex-col font-mono text-xs text-[#849396] gap-1 md:text-right">
                 <span>+91 95150 21303 &bull; carunkanth@gmail.com &bull; Visakhapatnam, India</span>
-                <span>linkedin.com/in/carunkanth &bull; github.com/Arunkanth018</span>
-                <span>carunkanthdevfolio.vercel.app</span>
+                <span>
+                  <a href="https://www.linkedin.com/in/carunkanth" target="_blank" rel="noopener noreferrer" className="hover:text-[#00daf3] transition-colors">linkedin.com/in/carunkanth</a>
+                  {' '}&bull;{' '}
+                  <a href="https://github.com/carunkanth018" target="_blank" rel="noopener noreferrer" className="hover:text-[#00daf3] transition-colors">github.com/carunkanth018</a>
+                </span>
+                <span>
+                  <a href="https://carunkanthdevfolio.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-[#00daf3] transition-colors">carunkanthdevfolio.vercel.app</a>
+                </span>
               </div>
             </div>
 

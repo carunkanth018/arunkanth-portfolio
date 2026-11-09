@@ -120,7 +120,7 @@ export const Footer: React.FC = () => {
           <div className="flex items-center gap-4">
             <Magnetic strength={6} cursorType="button">
               <motion.a
-                href="https://github.com/Arunkanth018"
+                href="https://github.com/carunkanth018"
                 target="_blank"
                 rel="noopener noreferrer"
                 data-cursor="button"
